@@ -3,6 +3,8 @@
 #include <iostream>
 #include <ostream>
 #include <string>
+#include <vector>
+#include <cstdio>
 
 /**
 CS 121 Homework Assignment
@@ -65,6 +67,19 @@ const std::string OG_FILE = "AL_Weather_Stations_Dec_23.txt";
 const std::string FILTERED_FILE = "Filtered_AL_Weather_Station.txt";
 const std::string REDUCED_FILE = "reduced_column.txt";
 
+std::string trim(const std::string& str,
+                 const std::string& whitespace = " \t")
+{
+    const auto strBegin = str.find_first_not_of(whitespace);
+    if (strBegin == std::string::npos)
+        return ""; // no content
+
+    const auto strEnd = str.find_last_not_of(whitespace);
+    const auto strRange = strEnd - strBegin + 1;
+
+    return str.substr(strBegin, strRange);
+}
+
 /**
 
 http://uahcs.org/CS121/data/AL_Weather_Stations_Dec_23.txt
@@ -82,8 +97,8 @@ addition to TMAX and TMIN.
 
 void q_one() {
 
-  std::fstream my_file(OG_FILE);
-  std::fstream filtered_file(FILTERED_FILE);
+  std::ifstream my_file;
+  std::ofstream filtered_file(FILTERED_FILE);
 
   int c = 1;
   unsigned long PRCP = -1;
@@ -102,20 +117,21 @@ void q_one() {
         TMAX = line.find("TMAX");
         TMIN = line.find("TMIN");
       } else if (c > 2) {
-        if (line.substr(PRCP, 5).compare("-9999") == 0 ||
-            line.substr(TMAX, 5).compare("-9999") == 0 ||
-            line.substr(TMIN, 5).compare("-9999") == 0) {
+        if (line.substr(PRCP, 5) == "-9999" ||
+            line.substr(TMAX, 5) == "-9999" ||
+            line.substr(TMIN, 5) == "-9999") {
           skip = true;
         }
       }
       c++;
 
       if (!skip) {
-        filtered_file << line;
+        filtered_file << line << std::endl;
       }
     }
   }
 
+  filtered_file.flush();
   my_file.close();
   filtered_file.close();
 }
@@ -152,8 +168,8 @@ tmax = stof(s_tmax);
 
 void q_two() {
 
-  std::fstream filtered_file(FILTERED_FILE);
-  std::fstream reduced_file(REDUCED_FILE);
+  std::ifstream filtered_file(FILTERED_FILE);
+  std::ofstream reduced_file(REDUCED_FILE);
 
   unsigned long NAME = -1;
   unsigned long ELEVATION = -1;
@@ -172,7 +188,7 @@ void q_two() {
 
     while (std::getline(filtered_file, derp)) {
 
-      if (counter == 2) {
+      if (counter == 1) {
         NAME = derp.find("STATION_NAME");
         ELEVATION = derp.find("ELEVATION");
         LATITUDE = derp.find("LATITUDE");
@@ -183,8 +199,8 @@ void q_two() {
         TMIN = derp.find("TMIN");
         MDPR = derp.find("MDPR");
 
-        reduced_file << std::setw(40) << std::left << std::setfill(' ')
-                     << "STATION NAME";
+        reduced_file << std::setw(60) << std::left
+                     << "STATION_NAME";
         reduced_file << std::setw(15) << std::left << "ELEVATION";
         reduced_file << std::setw(15) << std::left << "LATITUDE";
         reduced_file << std::setw(15) << std::left << "LONGITUDE";
@@ -194,29 +210,40 @@ void q_two() {
         reduced_file << std::setw(15) << std::left << "TMIN" << std::endl;
 
       } else if (counter > 2) {
-        std::string name = derp.substr(NAME, ELEVATION - NAME);
-        std::string elevation = derp.substr(ELEVATION, LATITUDE - ELEVATION);
-        std::string lat = derp.substr(LATITUDE, LONGITUDE - LATITUDE);
-        std::string lon = derp.substr(LONGITUDE, DATE - LONGITUDE);
-        std::string date = derp.substr(DATE, MDPR - DATE);
-        std::string prcp = derp.substr(PRCP, 5);
-        std::string tmax = derp.substr(TMAX, 5);
-        std::string tmin = derp.substr(TMIN, 5);
+        std::string name = trim(derp.substr(NAME, ELEVATION - NAME));
+        std::string elevation = trim(derp.substr(ELEVATION, LATITUDE - ELEVATION));
+        float lat = std::stof(trim(derp.substr(LATITUDE, LONGITUDE - LATITUDE)));
+        float lon = std::stof(trim(derp.substr(LONGITUDE, DATE - LONGITUDE)));
+        std::string date = trim(derp.substr(DATE, MDPR - DATE));
+        std::string prcp = trim(derp.substr(PRCP, 5));
+        std::string tmax = trim(derp.substr(TMAX, 5));
+        std::string tmin = trim(derp.substr(TMIN, 5));
 
-        reduced_file << std::setw(40) << std::left << std::setfill(' ') << name;
+        std::string year = date.substr(0,4);
+        std::string month = date.substr(4, 2);
+        std::string day = date.substr(6, 2);
+
+        char buf[100];
+        std::sprintf(buf, "%s %s %s", month.c_str(), day.c_str(), year.c_str());
+        date = buf;
+
+        reduced_file << std::setw(60) << std::left  << name;
         reduced_file << std::setw(15) << std::left << elevation;
-        reduced_file << std::setw(15) << std::left << lat;
-        reduced_file << std::setw(15) << std::left << lon;
+        reduced_file << std::setw(15) << std::left << std::setprecision(4) << lat;
+        reduced_file << std::setw(15) << std::left << std::setprecision(4) << lon;
         reduced_file << std::setw(15) << std::left << date;
         reduced_file << std::setw(15) << std::left << prcp;
         reduced_file << std::setw(15) << std::left << tmax;
         reduced_file << std::setw(15) << std::left << tmin << std::endl;
       }
+
+      counter++;
     };
   } else {
     std::cout << "Files failed to open." << std::endl;
   }
 
+  reduced_file.flush();
   filtered_file.close();
   reduced_file.close();
 }
@@ -234,6 +261,95 @@ Determine the highest and lowest temperatures in the state for the entire
 month of December 2023. Print out (to the screen) the station names with
 highest and lowest temperatures along with the high and low values. (Multiple
 stations may record the same values for high and low.)
+
+*/
+
+void q_three() {
+
+    typedef struct {
+        std::string Name;
+        int max;
+        int min;
+    } Station;
+
+    std::ifstream filtered_file(REDUCED_FILE);
+
+    if(filtered_file.is_open()) {
+
+        std::vector<Station> mins;
+        std::vector<Station> maxs;
+
+        unsigned long ELEVATION = -1;
+        unsigned long NAME = -1;
+        unsigned long TMAX = -1;
+        unsigned long TMIN = -1;
+
+        int c = 1;
+        std::string derp;
+
+        while(std::getline(filtered_file, derp)) {
+            if(c == 1) {
+                NAME = derp.find("STATION_NAME");
+                ELEVATION = derp.find("ELEVATION");
+                TMAX = derp.find("TMAX");
+                TMIN = derp.find("TMIN");
+            } else if(!derp.empty()) {
+                std::string name = trim(derp.substr(NAME, ELEVATION - NAME));
+                std::string max = trim(derp.substr(TMAX, 5));
+                std::string min = trim(derp.substr(TMIN, 5));
+
+                int fmax = std::stoi(max);
+                int fmin = std::stoi(min);
+
+                Station s;
+                s.Name = name;
+                s.max = fmax;
+                s.min = fmin;
+
+                // check maxs
+
+                if(maxs.empty()) {
+                    maxs.push_back(s);
+                } else {
+                    if(s.max > maxs.front().max) {
+                        maxs.clear();
+                        maxs.push_back(s);
+                    } else if(s.max == maxs.front().max) {
+                        maxs.push_back(s);
+                    }
+                }
+
+                if(mins.empty()) {
+                    mins.push_back(s);
+                } else {
+                    if(s.min < mins.front().min) {
+                        mins.clear();
+                        mins.push_back(s);
+                    } else if(s.min == mins.front().min) {
+                        mins.push_back(s);
+                    }
+                }
+
+            }
+            c++;
+        }
+
+        std::cout << "Maxs: " << std::endl;
+        for(const Station& s : maxs) {
+            std::cout << std::left <<  std::setw(60) << s.Name << std::setw(15) <<  s.max << std::setw(15) << s.min << std::endl;
+        }
+
+        std::cout << "Mins: " << std::endl;
+        for(const Station& s : mins) {
+            std::cout << std::left <<  std::setw(60) << s.Name << std::setw(15) <<  s.max << std::setw(15) << s.min << std::endl;
+        }
+
+    }
+
+    filtered_file.close();
+}
+
+/**
 4.  (20 Points) Find the total precipitation from all stations in the state
 for a single day.
 
@@ -245,6 +361,57 @@ TEST CASES:
 December 10, 2023
 December 25, 2023
 
+*/
+
+void q_four() {
+
+    std::string tday;
+    std::cout << "Input a day: ";
+    std::cin >> tday;
+
+    if(tday.size() < 2) {
+        tday = "0" + tday;
+    }
+
+    float total = 0;
+
+    std::ifstream filtered_file(REDUCED_FILE);
+
+    if(filtered_file.is_open()) {
+
+        unsigned long DATE = -1;
+        unsigned long PRCP = -1;
+
+
+        int c = 1;
+        std::string derp;
+
+        while(std::getline(filtered_file, derp)) {
+            if(c == 1) {
+                DATE = derp.find("DATE");
+                PRCP = derp.find("PRCP");
+            } else if(!derp.empty()) {
+                std::string date = trim(derp.substr(DATE, PRCP - DATE));
+                std::string prcp = trim(derp.substr(PRCP, 5));
+
+                std::string day = date.substr(3, 2);
+
+                if(tday == day) {
+                    float p = std::stof(prcp);
+                    total += p;
+                }
+
+            }
+            c++;
+        }
+
+    }
+    std::cout << "Total: " << total << std::endl;
+    filtered_file.close();
+}
+
+/**
+
 5. (20 Points) Data by Station and Date
 
 The program finds and returns the maximum temp, minimum temp and precipitation
@@ -254,6 +421,78 @@ month. e.g. BANKHEAD  25.
 TEST CASES:
 MOBILE DOWNTOWN AIRPORT AL US   December 2, 2323
 HUNTSVILLE INTNL AIRPORT AL US         December 9, 2023
+
+*/
+
+void q_five() {
+    std::string tday;
+    std::cout << "Input a day: ";
+    std::cin >> tday;
+
+    if(tday.size() < 2) {
+        tday = "0" + tday;
+    }
+
+    std::cin.ignore();
+    std::string station;
+    std::cout << "Input station: ";
+    std::getline(std::cin, station);
+
+    float total = 0;
+
+    std::ifstream filtered_file(REDUCED_FILE);
+
+    if(filtered_file.is_open()) {
+
+        unsigned long NAME = -1;
+        unsigned long ELEVATION = -1;
+        unsigned long DATE = -1;
+        unsigned long PRCP = -1;
+        unsigned long TMAX = -1;
+        unsigned long TMIN = -1;
+        unsigned long MDPR = -1;
+
+
+        int c = 1;
+        std::string derp;
+
+        while(std::getline(filtered_file, derp)) {
+            if(c == 1) {
+                NAME = derp.find("STATION_NAME");
+                ELEVATION = derp.find("ELEVATION");
+                DATE = derp.find("DATE");
+                PRCP = derp.find("PRCP");
+                TMAX = derp.find("TMAX");
+                TMIN = derp.find("TMIN");
+                MDPR = derp.find("MDPR");
+            } else if(!derp.empty()) {
+                std::string name = trim(derp.substr(NAME, ELEVATION - NAME));
+                std::string date = trim(derp.substr(DATE, MDPR - DATE));
+                std::string prcp = trim(derp.substr(PRCP, 5));
+                std::string tmax = trim(derp.substr(TMAX, 5));
+                std::string tmin = trim(derp.substr(TMIN, 5));
+
+                std::string day = date.substr(3, 2);
+
+                if(tday == day && station == name) {
+                    std::cout << std::left << std::setw(50) << name;
+                    std::cout << std::setw(8) << std::left << "Max:" <<  tmax;
+                    std::cout << std::setw(8) << std::left <<  "Min:" << tmin;
+                    std::cout << std::setw(8) << std::left <<  "Per:" << prcp;
+                    std::cout << std::endl;
+                    break;
+                }
+
+            }
+            c++;
+        }
+
+    }
+
+    filtered_file.close();
+}
+
+/**
 
 6. (20 Points)  Data by Location and Date
 
@@ -282,6 +521,11 @@ TEST CASES
 3. South AL:             32.34,  30.30,  -88.47,  -85.20  Date 12 31 2023
  */
 
+void q_six() {
+
+}
+
+
 int main() {
   std::cout << "Running Question 1... ";
   q_one();
@@ -290,5 +534,25 @@ int main() {
   std::cout << "Running Question 2... ";
   q_two();
   std::cout << "Done" << std::endl;
+
+    std::cout << "Running Question 3... " << std::endl << std::endl;
+    q_three();
+    std::cout << std::endl;
+    std::cout << "Done" << std::endl;
+
+    std::cout << "Running Question 4... "  << std::endl << std::endl;;
+    q_four();
+    std::cout << std::endl;
+    std::cout << "Done" << std::endl;
+
+    std::cout << "Running Question 5... " << std::endl << std::endl;
+    q_five();
+    std::cout << "Done" << std::endl;
+
+    std::cout << "Running Question 6... " << std::endl << std::endl;
+    q_six();
+    std::cout << "Done" << std::endl;
+
+
   return 0;
 };
