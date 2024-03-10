@@ -1,0 +1,1 @@
+STATION NAME                            ELEVATION      LATITUDE       LONGITUDE      DATE           PRCP           TMAX           TMIN           
