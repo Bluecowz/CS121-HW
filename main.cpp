@@ -66,6 +66,7 @@ file. Problems 3-6 should be separate C++ programs.
 const std::string OG_FILE = "AL_Weather_Stations_Dec_23.txt";
 const std::string FILTERED_FILE = "Filtered_AL_Weather_Station.txt";
 const std::string REDUCED_FILE = "reduced_column.txt";
+const std::string AREA_FILE = "area_data.txt";
 
 std::string trim(const std::string& str,
                  const std::string& whitespace = " \t")
@@ -480,7 +481,6 @@ void q_five() {
                     std::cout << std::setw(8) << std::left <<  "Min:" << tmin;
                     std::cout << std::setw(8) << std::left <<  "Per:" << prcp;
                     std::cout << std::endl;
-                    break;
                 }
 
             }
@@ -523,10 +523,92 @@ TEST CASES
 
 void q_six() {
 
+    std::string sNL;
+    std::string sSL;
+    std::string sWL;
+    std::string sEL;
+    std::string d;
+
+    std::cout << "Enter NL: ";
+    std::cin >> sNL;
+    std::cout << "Enter SL: ";
+    std::cin >> sSL;
+    std::cout << "Enter WL: ";
+    std::cin >> sWL;
+    std::cout << "Enter EL ";
+    std::cin >> sEL;
+    std::cout << "Enter Day Date: ";
+    std::cin >> d;
+
+    if(d.size() == 1) {
+        d = "0"+d;
+    }
+
+    const float NL = std::stof(sNL);
+    const float SL = std::stof(sSL);
+    const float EL = std::stof(sEL);
+    const float WL = std::stof(sWL);
+
+    std::ifstream reduced_file(REDUCED_FILE);
+    std::ofstream location_file(AREA_FILE);
+
+    unsigned long NAME = -1;
+    unsigned long ELEVATION = -1;
+    unsigned long LATITUDE = -1;
+    unsigned long LONGITUDE = -1;
+    unsigned long DATE = -1;
+    unsigned long MDPR = -1;
+
+    std::string derp;
+    int counter = 1;
+
+
+    if (location_file.is_open() && reduced_file.is_open()) {
+
+        while (std::getline(reduced_file, derp)) {
+            bool skip = true;
+            if (counter == 1) {
+                NAME = derp.find("STATION_NAME");
+                ELEVATION = derp.find("ELEVATION");
+                LATITUDE = derp.find("LATITUDE");
+                LONGITUDE = derp.find("LONGITUDE");
+                DATE = derp.find("DATE");
+                MDPR = derp.find("MDPR");
+                skip = false;
+
+            } else if (counter > 2) {
+                std::string name = trim(derp.substr(NAME, ELEVATION - NAME));
+                std::string elevation = trim(derp.substr(ELEVATION, LATITUDE - ELEVATION));
+                float lat = std::stof(trim(derp.substr(LATITUDE, LONGITUDE - LATITUDE)));
+                float lon = std::stof(trim(derp.substr(LONGITUDE, DATE - LONGITUDE)));
+                std::string date = trim(derp.substr(DATE, MDPR - DATE));
+
+                std::string day = date.substr(3, 2);
+
+                if(day == d && lat <= NL && lat >= SL && lon <= EL && lon >= WL) {
+                    skip = false;
+                }
+
+            }
+
+            if(!skip) {
+                location_file << derp << std::endl;
+            }
+
+            counter++;
+        };
+    } else {
+        std::cout << "Files failed to open." << std::endl;
+    }
+
+    location_file.flush();
+    reduced_file.close();
+    location_file.close();
 }
 
 
 int main() {
+
   std::cout << "Running Question 1... ";
   q_one();
   std::cout << "Done" << std::endl;
@@ -548,6 +630,7 @@ int main() {
     std::cout << "Running Question 5... " << std::endl << std::endl;
     q_five();
     std::cout << "Done" << std::endl;
+
 
     std::cout << "Running Question 6... " << std::endl << std::endl;
     q_six();
